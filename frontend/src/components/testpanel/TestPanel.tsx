@@ -201,7 +201,7 @@ export function TestPanel() {
                   >
                     <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
                     <p style={{ fontFamily: 'Space Mono', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
-                      Generating question with Claude...
+                      Loading question...
                     </p>
                   </motion.div>
                 ) : fetchError ? (

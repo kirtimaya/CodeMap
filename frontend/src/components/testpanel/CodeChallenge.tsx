@@ -211,7 +211,7 @@ export function CodeChallenge({ question, onNext }: Props) {
                 {!gradingDone && (
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-3 h-3 border border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                    <span style={{ fontFamily: 'Space Mono', fontSize: '10px', color: '#00d4ff' }}>Claude is reviewing...</span>
+                    <span style={{ fontFamily: 'Space Mono', fontSize: '10px', color: '#00d4ff' }}>Reviewing your solution...</span>
                   </div>
                 )}
                 <pre style={{
