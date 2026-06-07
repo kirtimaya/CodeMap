@@ -2,16 +2,17 @@
 @import "tailwindcss";
 
 :root {
-  --bg-base: #080c10;
-  --bg-panel: #0d1117;
-  --bg-elevated: #131920;
+  --bg-base: #050810;
+  --bg-panel: #0c1117;
+  --bg-elevated: #111822;
   --accent-cyan: #00d4ff;
   --accent-green: #39ff14;
   --accent-amber: #f59e0b;
   --accent-red: #ff4444;
-  --border-subtle: rgba(255,255,255,0.06);
+  --accent-purple: #c792ea;
+  --border-subtle: rgba(255,255,255,0.07);
   --text-primary: rgba(255,255,255,0.92);
-  --text-secondary: rgba(255,255,255,0.55);
+  --text-secondary: rgba(255,255,255,0.52);
 }
 
 * {
@@ -26,6 +27,7 @@ html, body, #root {
   color: var(--text-primary);
   font-family: 'IBM Plex Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, .font-mono-heading {
@@ -36,18 +38,96 @@ code, pre, .font-code {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-base); }
-::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.4); }
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(0,212,255,0.18);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.38); }
 
-/* React Flow overrides */
-.react-flow__background { background-color: var(--bg-base) !important; }
-.react-flow__minimap { background-color: var(--bg-panel) !important; border: 1px solid var(--border-subtle) !important; border-radius: 8px !important; }
-.react-flow__minimap-mask { fill: rgba(0,0,0,0.6) !important; }
+/* ── Selection ────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(0,212,255,0.25);
+  color: rgba(255,255,255,0.95);
+}
+
+/* ── React Flow overrides ─────────────────────────────────────────────────── */
+.react-flow__background { background-color: transparent !important; }
+.react-flow__minimap {
+  background-color: rgba(8,12,18,0.85) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  border-radius: 10px !important;
+  backdrop-filter: blur(12px);
+}
+.react-flow__minimap-mask { fill: rgba(0,0,0,0.55) !important; }
 .react-flow__minimap-node { fill: rgba(0,212,255,0.3) !important; }
-.react-flow__controls { background: var(--bg-panel) !important; border: 1px solid var(--border-subtle) !important; border-radius: 8px !important; }
-.react-flow__controls-button { background: var(--bg-panel) !important; border-color: var(--border-subtle) !important; color: var(--text-secondary) !important; }
-.react-flow__controls-button:hover { background: var(--bg-elevated) !important; color: var(--accent-cyan) !important; }
-.react-flow__edge-path { stroke: rgba(0,212,255,0.25) !important; }
+.react-flow__controls {
+  background: rgba(8,12,18,0.85) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  border-radius: 10px !important;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3) !important;
+}
+.react-flow__controls-button {
+  background: transparent !important;
+  border-color: rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.45) !important;
+  transition: all 0.15s !important;
+}
+.react-flow__controls-button:hover {
+  background: rgba(0,212,255,0.08) !important;
+  color: #00d4ff !important;
+}
+.react-flow__edge-path {
+  stroke: rgba(0,212,255,0.2) !important;
+  stroke-width: 1.5 !important;
+}
+.react-flow__edge-path:hover {
+  stroke: rgba(0,212,255,0.5) !important;
+}
+
+/* ── Utility: glassmorphism panels ────────────────────────────────────────── */
+.glass {
+  background: rgba(12, 17, 25, 0.78);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ── Utility: gradient text ───────────────────────────────────────────────── */
+.gradient-text-cyan {
+  background: linear-gradient(90deg, #00d4ff, #c792ea);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Shimmer animation (for loading states) ───────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.03) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ── Glow text helpers ─────────────────────────────────────────────────────── */
+.glow-cyan { text-shadow: 0 0 16px rgba(0,212,255,0.55), 0 0 32px rgba(0,212,255,0.2); }
+.glow-green { text-shadow: 0 0 16px rgba(57,255,20,0.55), 0 0 32px rgba(57,255,20,0.2); }
+.glow-amber { text-shadow: 0 0 16px rgba(245,158,11,0.55), 0 0 32px rgba(245,158,11,0.2); }
+
+/* ── Panel slide in ───────────────────────────────────────────────────────── */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}

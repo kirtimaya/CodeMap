@@ -5,9 +5,10 @@ import type { ConceptNode } from '../../types';
 import { useConceptStore } from '../../store/conceptStore';
 import { useProgressStore } from '../../store/progressStore';
 import { useTestStore } from '../../store/testStore';
+import { useInstructorStore } from '../../store/instructorStore';
 import { CodeBlock } from '../ui/CodeBlock';
+import { InstructorPanel } from '../instructor/InstructorPanel';
 
-// Lazy-load visualizations
 const JVMHeapViz = lazy(() => import('../visualizations/JVMHeapViz'));
 const ClassLoadingViz = lazy(() => import('../visualizations/ClassLoadingViz'));
 const SpringBeanLifecycleViz = lazy(() => import('../visualizations/SpringBeanLifecycleViz'));
@@ -30,20 +31,18 @@ const VIZ_MAP: Record<string, React.ComponentType> = {
 
 function VizPlaceholder() {
   return (
-    <div className="flex items-center justify-center h-48 rounded-xl"
-      style={{ border: '1px dashed rgba(0,212,255,0.2)', background: 'rgba(0,212,255,0.03)' }}>
+    <div
+      className="flex items-center justify-center h-48 rounded-xl"
+      style={{ border: '1px dashed rgba(0,212,255,0.18)', background: 'rgba(0,212,255,0.02)' }}
+    >
       <div className="text-center">
         <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', fontFamily: 'Space Mono' }}>
+        <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '12px', fontFamily: 'Space Mono' }}>
           Loading visualization...
         </span>
       </div>
     </div>
   );
-}
-
-interface Props {
-  concept: ConceptNode;
 }
 
 function RelevanceStars({ level }: { level: number }) {
@@ -52,19 +51,24 @@ function RelevanceStars({ level }: { level: number }) {
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
-          size={12}
+          size={11}
           fill={i < level ? '#f59e0b' : 'none'}
-          color={i < level ? '#f59e0b' : 'rgba(255,255,255,0.2)'}
+          color={i < level ? '#f59e0b' : 'rgba(255,255,255,0.15)'}
         />
       ))}
     </div>
   );
 }
 
+interface Props {
+  concept: ConceptNode;
+}
+
 export function ConceptDetail({ concept }: Props) {
   const { selectConcept } = useConceptStore();
   const { markVisited } = useProgressStore();
   const { openPanel } = useTestStore();
+  const { instructorEnabled } = useInstructorStore();
 
   useEffect(() => {
     markVisited(concept.id);
@@ -78,29 +82,53 @@ export function ConceptDetail({ concept }: Props) {
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: '100%', opacity: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 35 }}
-      className="flex flex-col h-full overflow-hidden"
+      className="flex flex-col h-full overflow-hidden relative"
       style={{
-        background: '#0d1117',
-        borderLeft: '1px solid rgba(255,255,255,0.06)',
-        width: '420px',
-        minWidth: '420px',
+        background: 'linear-gradient(180deg, #0c1220 0%, #0d1117 100%)',
+        borderLeft: '1px solid rgba(255,255,255,0.07)',
+        width: '440px',
+        minWidth: '440px',
+        boxShadow: '-12px 0 40px rgba(0,0,0,0.4)',
       }}
     >
+      {/* Top shimmer line */}
+      <div
+        className="h-px flex-shrink-0"
+        style={{
+          background: 'linear-gradient(90deg, transparent, rgba(0,212,255,0.5), transparent)',
+        }}
+      />
+
       {/* Header */}
-      <div className="flex items-start justify-between p-4 gap-3"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div
+        className="flex items-start justify-between px-4 pt-4 pb-3 flex-shrink-0"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+      >
         <div className="flex-1 min-w-0">
-          <h2 style={{ fontFamily: 'Space Mono', fontSize: '16px', color: '#00d4ff', marginBottom: '4px' }}>
+          <motion.h2
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            style={{
+              fontFamily: 'Space Mono',
+              fontSize: '15px',
+              marginBottom: '4px',
+              background: 'linear-gradient(90deg, #00d4ff, #c792ea)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
             {concept.label}
-          </h2>
-          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }}>
+          </motion.h2>
+          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.48)', lineHeight: 1.4 }}>
             {concept.tagline}
           </p>
           <div className="flex items-center gap-3 mt-2">
             <div className="flex items-center gap-1">
-              <Clock size={11} style={{ color: 'rgba(255,255,255,0.35)' }} />
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', fontFamily: 'Space Mono' }}>
-                {concept.estimatedReadMinutes}m
+              <Clock size={10} style={{ color: 'rgba(255,255,255,0.3)' }} />
+              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', fontFamily: 'Space Mono' }}>
+                {concept.estimatedReadMinutes}m read
               </span>
             </div>
             <RelevanceStars level={concept.interviewRelevance} />
@@ -108,24 +136,26 @@ export function ConceptDetail({ concept }: Props) {
         </div>
         <button
           onClick={() => selectConcept(null)}
-          className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
-          style={{ color: 'rgba(255,255,255,0.4)' }}
+          className="p-1.5 rounded-lg transition-all hover:bg-white/5 flex-shrink-0"
+          style={{ color: 'rgba(255,255,255,0.35)' }}
         >
-          <X size={16} />
+          <X size={15} />
         </button>
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6 space-y-5">
+        {/* Instructor panel */}
+        <AnimatePresence mode="wait">
+          {instructorEnabled && (
+            <InstructorPanel key={concept.id} concept={concept} />
+          )}
+        </AnimatePresence>
+
         {/* Visualization */}
         {VizComponent && (
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-1 h-4 rounded-full" style={{ background: '#00d4ff' }} />
-              <span style={{ fontFamily: 'Space Mono', fontSize: '11px', color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Interactive Visualization
-              </span>
-            </div>
+            <SectionLabel color="#00d4ff" label="Interactive Visualization" />
             <Suspense fallback={<VizPlaceholder />}>
               <VizComponent />
             </Suspense>
@@ -134,13 +164,8 @@ export function ConceptDetail({ concept }: Props) {
 
         {/* Overview */}
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-1 h-4 rounded-full" style={{ background: '#39ff14' }} />
-            <span style={{ fontFamily: 'Space Mono', fontSize: '11px', color: '#39ff14', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Overview
-            </span>
-          </div>
-          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.7 }}>
+          <SectionLabel color="#39ff14" label="Overview" />
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.72)', lineHeight: 1.75 }}>
             {concept.content.overview}
           </p>
         </div>
@@ -148,10 +173,18 @@ export function ConceptDetail({ concept }: Props) {
         {/* Sections */}
         {concept.content.sections.map((section, i) => (
           <div key={i}>
-            <h3 style={{ fontFamily: 'Space Mono', fontSize: '13px', color: 'rgba(255,255,255,0.9)', marginBottom: '8px' }}>
+            <h3
+              style={{
+                fontFamily: 'Space Mono',
+                fontSize: '12px',
+                color: 'rgba(255,255,255,0.88)',
+                marginBottom: '8px',
+                letterSpacing: '0.02em',
+              }}
+            >
               {section.heading}
             </h3>
-            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginBottom: section.codeSnippet ? '0' : '0' }}>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.62)', lineHeight: 1.75 }}>
               {section.body}
             </p>
             {section.codeSnippet && <CodeBlock snippet={section.codeSnippet} />}
@@ -160,18 +193,38 @@ export function ConceptDetail({ concept }: Props) {
 
         {/* Key Insights */}
         {concept.content.keyInsights.length > 0 && (
-          <div className="rounded-xl p-4"
-            style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
+          <div
+            className="rounded-xl p-4"
+            style={{
+              background: 'linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(245,158,11,0.03) 100%)',
+              border: '1px solid rgba(245,158,11,0.18)',
+            }}
+          >
             <div className="flex items-center gap-2 mb-3">
-              <Star size={13} fill="#f59e0b" color="#f59e0b" />
-              <span style={{ fontFamily: 'Space Mono', fontSize: '11px', color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              <Star size={12} fill="#f59e0b" color="#f59e0b" />
+              <span
+                style={{
+                  fontFamily: 'Space Mono',
+                  fontSize: '10px',
+                  color: '#f59e0b',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                }}
+              >
                 Key Insights
               </span>
             </div>
             <ul className="space-y-2">
               {concept.content.keyInsights.map((insight, i) => (
-                <li key={i} className="flex gap-2" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.5 }}>
-                  <ChevronRight size={12} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '3px' }} />
+                <li
+                  key={i}
+                  className="flex gap-2"
+                  style={{ fontSize: '12px', color: 'rgba(255,255,255,0.68)', lineHeight: 1.55 }}
+                >
+                  <ChevronRight
+                    size={12}
+                    style={{ color: '#f59e0b', flexShrink: 0, marginTop: '3px' }}
+                  />
                   {insight}
                 </li>
               ))}
@@ -182,44 +235,70 @@ export function ConceptDetail({ concept }: Props) {
         {/* Tags */}
         <div className="flex flex-wrap gap-1.5">
           {concept.tags.map((tag) => (
-            <span key={tag}
-              className="px-2 py-0.5 rounded-md text-xs"
+            <span
+              key={tag}
+              className="px-2 py-0.5 rounded-md"
               style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                color: 'rgba(255,255,255,0.4)',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                color: 'rgba(255,255,255,0.35)',
                 fontFamily: 'JetBrains Mono',
-                fontSize: '10px',
-              }}>
+                fontSize: '9px',
+              }}
+            >
               #{tag}
             </span>
           ))}
         </div>
 
         {/* Practice button */}
-        <button
+        <motion.button
           onClick={() => openPanel(concept.id, concept.label, concept.tagline)}
-          className="w-full py-3 rounded-xl font-medium transition-all duration-200"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          className="w-full py-3 rounded-xl font-medium relative overflow-hidden group"
           style={{
             fontFamily: 'Space Mono',
             fontSize: '12px',
-            background: 'rgba(0,212,255,0.1)',
+            background: 'rgba(0,212,255,0.09)',
             border: '1px solid rgba(0,212,255,0.3)',
             color: '#00d4ff',
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,212,255,0.18)';
-            (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 20px rgba(0,212,255,0.2)';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,212,255,0.1)';
-            (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none';
+            boxShadow: '0 0 20px rgba(0,212,255,0.08)',
           }}
         >
-          <BookOpen size={14} className="inline mr-2" />
+          {/* Shimmer sweep */}
+          <div
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{
+              background:
+                'linear-gradient(90deg, transparent, rgba(0,212,255,0.1), transparent)',
+              transform: 'translateX(-100%)',
+              animation: 'none',
+            }}
+          />
+          <BookOpen size={13} className="inline mr-2" />
           Practice This Concept
-        </button>
+        </motion.button>
       </div>
     </motion.div>
+  );
+}
+
+function SectionLabel({ color, label }: { color: string; label: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-2">
+      <div className="w-0.5 h-4 rounded-full" style={{ background: color }} />
+      <span
+        style={{
+          fontFamily: 'Space Mono',
+          fontSize: '10px',
+          color,
+          textTransform: 'uppercase',
+          letterSpacing: '0.09em',
+        }}
+      >
+        {label}
+      </span>
+    </div>
   );
 }
