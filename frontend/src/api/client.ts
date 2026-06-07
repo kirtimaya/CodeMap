@@ -1,5 +1,9 @@
 import type { MCQQuestion, CodingQuestion, DifficultyLevel } from '../types';
 
+// In dev: Vite proxies /api → localhost:8080 (see vite.config.ts)
+// In prod: VITE_API_BASE_URL=https://your-oci-ip points to the OCI backend
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+
 // ── Request / response shapes matching the Spring Boot backend ──────────────
 
 interface GenerateRequest {
@@ -54,7 +58,7 @@ export async function generateQuestion(
     type: mode === 'mcq' ? 'MCQ' : 'CODING',
   };
 
-  const res = await fetch('/api/questions/generate', {
+  const res = await fetch(`${API_BASE}/api/questions/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
@@ -105,7 +109,7 @@ export function gradeStream(
 
   (async () => {
     try {
-      const res = await fetch('/api/grade', {
+      const res = await fetch(`${API_BASE}/api/grade`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify(req),
