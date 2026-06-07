@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+:root {
+  --bg-base: #080c10;
+  --bg-panel: #0d1117;
+  --bg-elevated: #131920;
+  --accent-cyan: #00d4ff;
+  --accent-green: #39ff14;
+  --accent-amber: #f59e0b;
+  --accent-red: #ff4444;
+  --border-subtle: rgba(255,255,255,0.06);
+  --text-primary: rgba(255,255,255,0.92);
+  --text-secondary: rgba(255,255,255,0.55);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'IBM Plex Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .font-mono-heading {
+  font-family: 'Space Mono', monospace;
+}
+
+code, pre, .font-code {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.4); }
+
+/* React Flow overrides */
+.react-flow__background { background-color: var(--bg-base) !important; }
+.react-flow__minimap { background-color: var(--bg-panel) !important; border: 1px solid var(--border-subtle) !important; border-radius: 8px !important; }
+.react-flow__minimap-mask { fill: rgba(0,0,0,0.6) !important; }
+.react-flow__minimap-node { fill: rgba(0,212,255,0.3) !important; }
+.react-flow__controls { background: var(--bg-panel) !important; border: 1px solid var(--border-subtle) !important; border-radius: 8px !important; }
+.react-flow__controls-button { background: var(--bg-panel) !important; border-color: var(--border-subtle) !important; color: var(--text-secondary) !important; }
+.react-flow__controls-button:hover { background: var(--bg-elevated) !important; color: var(--accent-cyan) !important; }
+.react-flow__edge-path { stroke: rgba(0,212,255,0.25) !important; }

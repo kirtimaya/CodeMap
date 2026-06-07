@@ -1,0 +1,942 @@
+[
+  {
+    "id": "java-root",
+    "parentId": null,
+    "label": "Java",
+    "tagline": "The Java platform — language, runtime, and ecosystem",
+    "depth": 0,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java is a platform-independent, object-oriented language that compiles to bytecode and runs on the Java Virtual Machine. Its 'write once, run anywhere' design powers enterprise systems, Android, and cloud-native applications.",
+      "sections": [],
+      "keyInsights": []
+    },
+    "estimatedReadMinutes": 1,
+    "tags": ["java"],
+    "interviewRelevance": 5
+  },
+  {
+    "id": "jvm-internals",
+    "parentId": "java-root",
+    "label": "JVM Internals",
+    "tagline": "How the Java Virtual Machine executes your code",
+    "depth": 1,
+    "visualizationType": null,
+    "content": {
+      "overview": "The JVM is a process virtual machine that loads, verifies, and executes Java bytecode. It abstracts the underlying OS and hardware, managing memory, threads, and JIT compilation automatically.",
+      "sections": [
+        {
+          "heading": "Architecture Overview",
+          "body": "The JVM consists of a class loader subsystem, runtime data areas (heap, stack, method area, PC registers, native method stacks), an execution engine (interpreter + JIT compiler), and a native method interface. Each running JVM instance is a single process hosting all Java threads."
+        }
+      ],
+      "keyInsights": [
+        "The JVM spec defines behavior, not implementation — HotSpot, GraalVM, OpenJ9 are different implementations",
+        "JIT compilation kicks in after a method is called enough times (tiered compilation: C1 then C2)",
+        "The JVM itself is written in C++ (HotSpot) but can execute any JVM-bytecode language (Kotlin, Scala, Clojure)"
+      ]
+    },
+    "estimatedReadMinutes": 5,
+    "tags": ["jvm", "internals"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "jvm-classloading",
+    "parentId": "jvm-internals",
+    "label": "Class Loading",
+    "tagline": "How classes are found, loaded, and linked at runtime",
+    "depth": 2,
+    "visualizationType": "ClassLoadingViz",
+    "content": {
+      "overview": "Class loading is the process of finding a .class file, reading its bytecode, and creating a Class object in the JVM's method area. The process involves three phases: loading, linking (verification, preparation, resolution), and initialization.",
+      "sections": [
+        {
+          "heading": "The Delegation Model",
+          "body": "Java uses a parent-first delegation model. When a class loader is asked to load a class, it first delegates to its parent. Only if the parent can't find it does the child attempt to load it. This prevents user code from replacing core Java classes.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "// Custom class loader example\npublic class HotSwapClassLoader extends ClassLoader {\n    @Override\n    protected Class<?> findClass(String name) throws ClassNotFoundException {\n        byte[] bytes = loadClassBytes(name); // read from custom source\n        return defineClass(name, bytes, 0, bytes.length);\n    }\n}"
+          }
+        },
+        {
+          "heading": "The Three Built-in Loaders",
+          "body": "Bootstrap ClassLoader (loads rt.jar/java.*), Extension ClassLoader (loads ext/ or --module-path), and Application ClassLoader (loads your classpath). In Java 9+, the Extension ClassLoader was replaced by the Platform ClassLoader as part of the module system."
+        },
+        {
+          "heading": "Linking Phase",
+          "body": "After loading, the bytecode is verified for safety (no stack overflows, no illegal access), static fields are set to default values (preparation), and symbolic references are resolved to direct references (resolution). Initialization runs static initializers and static field assignments in textual order."
+        }
+      ],
+      "keyInsights": [
+        "ClassNotFoundException vs NoClassDefFoundError: the former means the loader couldn't find the file; the latter means it was found during compilation but not at runtime",
+        "Class identity in JVM = (class name + class loader) — the same .class loaded by two different loaders gives two different Class objects",
+        "Static initializers run exactly once, when the class is first actively used (not just referenced)"
+      ]
+    },
+    "estimatedReadMinutes": 8,
+    "tags": ["jvm", "classloader", "internals"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "jvm-bytecode",
+    "parentId": "jvm-internals",
+    "label": "Bytecode",
+    "tagline": "The instruction set the JVM actually executes",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java bytecode is a compact, stack-based instruction set stored in .class files. The JVM's interpreter executes bytecode instruction by instruction; the JIT compiler compiles hot bytecode paths to native machine code.",
+      "sections": [
+        {
+          "heading": "Reading Bytecode",
+          "body": "Use `javap -c MyClass.class` to disassemble bytecode. Each method shows its local variable table and the sequence of opcodes. Common opcodes: `aload_0` (load 'this'), `invokevirtual` (call instance method), `getfield`/`putfield`, `return`.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "// Source\npublic int add(int a, int b) { return a + b; }\n\n// Bytecode (javap -c)\n// 0: iload_1      // load a\n// 1: iload_2      // load b\n// 2: iadd         // integer add\n// 3: ireturn      // return int"
+          }
+        }
+      ],
+      "keyInsights": [
+        "Bytecode is forward-compatible — Java 8 bytecode runs on Java 21 JVM (but not vice versa by default)",
+        "invokedynamic (Java 7+) is the foundation for lambdas, method references, and string concatenation optimization",
+        "Tools like ASM and ByteBuddy manipulate bytecode at runtime — used by Spring AOP, JaCoCo, Mockito"
+      ]
+    },
+    "estimatedReadMinutes": 6,
+    "tags": ["jvm", "bytecode"],
+    "interviewRelevance": 3
+  },
+  {
+    "id": "jvm-jit",
+    "parentId": "jvm-internals",
+    "label": "JIT Compiler",
+    "tagline": "How the JVM turns bytecode into native machine code at runtime",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "The Just-In-Time compiler monitors which methods are called frequently ('hot' methods) and compiles them to optimized native machine code. HotSpot uses tiered compilation: C1 (client compiler, fast but light optimization) then C2 (server compiler, deep optimization for hot code).",
+      "sections": [
+        {
+          "heading": "Tiered Compilation",
+          "body": "Level 0: interpreter. Level 1-3: C1 compiled with increasing profiling. Level 4: C2 compiled (fully optimized). The JVM automatically promotes methods through these tiers based on invocation counts and loop back-edge counts."
+        },
+        {
+          "heading": "Key Optimizations",
+          "body": "C2 performs inlining (eliminates method call overhead for small hot methods), escape analysis (stack-allocates objects that don't escape), loop unrolling, and dead code elimination. GraalVM's C2 replacement adds even more aggressive optimizations."
+        }
+      ],
+      "keyInsights": [
+        "JVM 'warm-up' is real — peak performance takes thousands of invocations; pre-warm in benchmarks",
+        "GraalVM native image compiles ahead-of-time, eliminating warm-up but losing runtime adaptive optimization",
+        "-XX:+PrintCompilation shows which methods are being JIT-compiled"
+      ]
+    },
+    "estimatedReadMinutes": 7,
+    "tags": ["jvm", "jit", "performance"],
+    "interviewRelevance": 3
+  },
+  {
+    "id": "jvm-runtime-areas",
+    "parentId": "jvm-internals",
+    "label": "Runtime Areas",
+    "tagline": "Heap, stack, metaspace, and the PC register",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "The JVM partitions memory into several runtime data areas. The heap is shared among all threads and holds objects. Each thread has its own JVM stack (frames for method calls) and PC register. Native method stacks support JNI calls. Metaspace (Java 8+) holds class metadata.",
+      "sections": [
+        {
+          "heading": "The Heap",
+          "body": "All object instances and arrays live on the heap. The heap is divided into generations: Young Generation (Eden + two Survivor spaces) and Old Generation (Tenured). Most objects die young and are collected cheaply by minor GC."
+        },
+        {
+          "heading": "JVM Stack",
+          "body": "Each thread has a private stack of frames. Each frame holds local variables, operand stack, and reference to the constant pool. StackOverflowError means you exceeded the stack depth (-Xss controls stack size). OutOfMemoryError on stack means the JVM can't create a new thread."
+        },
+        {
+          "heading": "Metaspace",
+          "body": "Replaced PermGen in Java 8. Stores class definitions, method bytecode, and constant pools. Grows automatically by default (-XX:MaxMetaspaceSize caps it). MetaspaceOOM typically indicates a class loader leak — often in dynamic environments like OSGi or hot-deploy."
+        }
+      ],
+      "keyInsights": [
+        "String literals live in the String pool in the heap (since Java 7; was PermGen before)",
+        "-Xms sets initial heap, -Xmx sets max heap — set them equal in production to avoid resizing pauses",
+        "Thread stacks are off-heap but count toward process memory — 1000 threads × 512KB stack = 512MB"
+      ]
+    },
+    "estimatedReadMinutes": 8,
+    "tags": ["jvm", "heap", "memory"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "memory-gc",
+    "parentId": "java-root",
+    "label": "Memory & GC",
+    "tagline": "How Java manages memory and reclaims unreachable objects",
+    "depth": 1,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java's garbage collector automatically reclaims memory from objects that are no longer reachable. Understanding GC is critical for writing high-throughput, low-latency applications — wrong GC settings can cause multi-second stop-the-world pauses.",
+      "sections": [],
+      "keyInsights": [
+        "GC roots are the starting points of reachability: local variables, static fields, JNI references",
+        "Generational hypothesis: most objects die young — this is why young-gen collection is cheap",
+        "GC tuning is empirical — always measure with GC logs before changing settings"
+      ]
+    },
+    "estimatedReadMinutes": 3,
+    "tags": ["gc", "memory"],
+    "interviewRelevance": 5
+  },
+  {
+    "id": "gc-heap-structure",
+    "parentId": "memory-gc",
+    "label": "Heap Structure",
+    "tagline": "Eden, Survivor spaces, Old Gen, and how objects move between them",
+    "depth": 2,
+    "visualizationType": "JVMHeapViz",
+    "content": {
+      "overview": "The heap is divided into regions that reflect object age. New objects are born in Eden. Objects that survive a minor GC move to a Survivor space. After surviving enough GC cycles (default: 15 for HotSpot), objects are promoted to Old Generation.",
+      "sections": [
+        {
+          "heading": "Young Generation",
+          "body": "Divided into Eden (where new objects are allocated using bump-pointer allocation — very fast) and two Survivor spaces (S0 and S1). Minor GC evacuates live objects from Eden and the current Survivor to the other Survivor, then clears the previous. This is a copy collector — no fragmentation.",
+          "codeSnippet": {
+            "language": "bash",
+            "code": "# Print GC details\njava -Xlog:gc*:file=gc.log:time,uptime,level,tags \\\n     -Xms512m -Xmx512m YourApp"
+          }
+        },
+        {
+          "heading": "Old Generation (Tenured)",
+          "body": "Long-lived objects promoted from Young Gen. Major GC (full GC) collects Old Gen — much slower because more objects survive. The goal is to keep Old Gen pressure low by tuning young-gen size and promotion thresholds."
+        },
+        {
+          "heading": "Metaspace",
+          "body": "Not technically part of the heap but adjacent to it conceptually. Stores class metadata. Doesn't get collected in heap GC — classes are unloaded only when their ClassLoader becomes unreachable."
+        }
+      ],
+      "keyInsights": [
+        "Allocation in Eden is O(1) — just increment a pointer — faster than malloc",
+        "Survivor space overflow causes premature promotion to Old Gen, leading to premature full GCs",
+        "G1 and ZGC break the generational model into flexible regions rather than fixed spaces"
+      ]
+    },
+    "estimatedReadMinutes": 10,
+    "tags": ["gc", "heap", "memory"],
+    "interviewRelevance": 5
+  },
+  {
+    "id": "gc-algorithms",
+    "parentId": "memory-gc",
+    "label": "GC Algorithms",
+    "tagline": "Serial, Parallel, G1, ZGC, and Shenandoah compared",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "Different GC algorithms make different trade-offs between throughput (work done per second) and latency (pause time per GC). Choosing the right GC depends on your application's SLAs.",
+      "sections": [
+        {
+          "heading": "Serial GC",
+          "body": "Single-threaded mark-sweep-compact. Pauses all application threads. Best for single-core or small heap environments. Enable with -XX:+UseSerialGC."
+        },
+        {
+          "heading": "Parallel GC (Throughput Collector)",
+          "body": "Multi-threaded mark-compact. Still stop-the-world but faster. Maximizes throughput at the cost of higher pause times. Default in Java 8. Use for batch processing where latency doesn't matter."
+        },
+        {
+          "heading": "G1 GC (Garbage First)",
+          "body": "Divides heap into equal-sized regions (~2048 by default). Collects regions with the most garbage first (hence 'Garbage First'). Targets a pause time goal (-XX:MaxGCPauseMillis=200). Default in Java 9+. Good balance of throughput and latency.",
+          "codeSnippet": {
+            "language": "bash",
+            "code": "java -XX:+UseG1GC \\\n     -XX:MaxGCPauseMillis=200 \\\n     -XX:G1HeapRegionSize=16m \\\n     YourApp"
+          }
+        },
+        {
+          "heading": "ZGC (Z Garbage Collector)",
+          "body": "Sub-millisecond pause times regardless of heap size (up to 16TB). Concurrent — most work happens while the application runs. Uses colored pointers and load barriers. Production-ready since Java 15. Default in some Java 21 distros."
+        },
+        {
+          "heading": "Shenandoah",
+          "body": "RedHat's concurrent compaction GC, similar goals to ZGC. Concurrent compaction (unlike G1 which compacts stop-the-world). Available in OpenJDK. Choose based on your JDK vendor and pause requirements."
+        }
+      ],
+      "keyInsights": [
+        "ZGC and Shenandoah trade CPU overhead for pause time — they use more CPU during normal execution",
+        "G1's pause target is a goal, not a guarantee — large allocation spikes can cause longer pauses",
+        "Java 21 introduced generational ZGC (-XX:+ZGenerational) for significantly better throughput"
+      ]
+    },
+    "estimatedReadMinutes": 12,
+    "tags": ["gc", "g1", "zgc", "performance"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "gc-object-lifecycle",
+    "parentId": "memory-gc",
+    "label": "Object Lifecycle",
+    "tagline": "From allocation to finalization — an object's complete journey",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "Every Java object follows the same path: allocation in Eden, potential survival through GC cycles, promotion to Old Gen, and eventual collection when no GC roots can reach it. Understanding this lifecycle helps you write GC-friendly code.",
+      "sections": [
+        {
+          "heading": "Object Header",
+          "body": "Every object has a 12-byte header (with compressed oops): 8 bytes mark word (hashcode, lock state, GC age) and 4 bytes class pointer. Arrays add a 4-byte length field. Use JOL (Java Object Layout) to inspect actual object sizes.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "// Add JOL to see object layout\n// mvn dependency: org.openjdk.jol:jol-core\nSystem.out.println(ClassLayout.parseInstance(new HashMap<>()).toPrintable());"
+          }
+        },
+        {
+          "heading": "Reference Types",
+          "body": "Strong (default), Soft (collected under memory pressure — good for caches), Weak (collected at next GC — used in WeakHashMap), Phantom (collected after finalization — for cleanup actions). Use ReferenceQueue to get notified when references are enqueued."
+        }
+      ],
+      "keyInsights": [
+        "Finalizers are deprecated — use Cleaner API (Java 9+) or try-with-resources instead",
+        "Object pooling is usually counterproductive for short-lived objects — let the GC do its job",
+        "Escape analysis can stack-allocate objects that don't escape a method — no heap allocation at all"
+      ]
+    },
+    "estimatedReadMinutes": 8,
+    "tags": ["gc", "objects", "references"],
+    "interviewRelevance": 3
+  },
+  {
+    "id": "gc-tuning",
+    "parentId": "memory-gc",
+    "label": "GC Tuning",
+    "tagline": "Diagnosing and eliminating garbage collection pauses",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "GC tuning is the process of configuring the JVM's garbage collector to meet application latency and throughput goals. The first step is always measurement — enable GC logging and use tools like GCEasy or GCViewer to understand your GC behavior.",
+      "sections": [
+        {
+          "heading": "Enabling GC Logging (Java 9+)",
+          "body": "Use the unified logging system. Key tags: gc (basic events), gc* (all GC details).",
+          "codeSnippet": {
+            "language": "bash",
+            "code": "java -Xlog:gc*:file=gc-%t.log:time,uptime,level,tags:filecount=10,filesize=50m \\\n     -Xms2g -Xmx2g \\\n     -XX:+UseG1GC \\\n     YourApp"
+          }
+        },
+        {
+          "heading": "Common Tuning Knobs",
+          "body": "Heap size (-Xms/-Xmx), Young Gen ratio (-XX:NewRatio, default 1:2 young:old), Survivor ratio (-XX:SurvivorRatio), Promotion threshold (-XX:MaxTenuringThreshold), G1 region size (-XX:G1HeapRegionSize), parallel GC threads (-XX:ParallelGCThreads)."
+        }
+      ],
+      "keyInsights": [
+        "The #1 GC tuning tip: give the JVM more heap — most GC problems are solved with more memory",
+        "If Old Gen fills faster than GC can collect, you have a memory leak or live set is too large",
+        "Humongous objects (>50% of G1 region size) skip Young Gen and go directly to Old Gen"
+      ]
+    },
+    "estimatedReadMinutes": 10,
+    "tags": ["gc", "tuning", "performance"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "concurrency",
+    "parentId": "java-root",
+    "label": "Concurrency",
+    "tagline": "Threads, locks, executors, and modern async Java",
+    "depth": 1,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java concurrency covers everything from low-level synchronized blocks to high-level abstractions like CompletableFuture and Java 21's virtual threads. Writing correct concurrent code requires understanding memory visibility, atomicity, and happens-before relationships.",
+      "sections": [],
+      "keyInsights": [
+        "The Java Memory Model (JMM) defines what values a read is guaranteed to see — understand happens-before",
+        "volatile guarantees visibility but not atomicity — use AtomicXxx or synchronized for compound actions",
+        "Prefer higher-level abstractions (ExecutorService, CompletableFuture) over raw Thread management"
+      ]
+    },
+    "estimatedReadMinutes": 3,
+    "tags": ["concurrency", "threads"],
+    "interviewRelevance": 5
+  },
+  {
+    "id": "thread-model",
+    "parentId": "concurrency",
+    "label": "Thread Model",
+    "tagline": "Platform threads, the OS thread relationship, and lifecycle states",
+    "depth": 2,
+    "visualizationType": "ThreadStateViz",
+    "content": {
+      "overview": "A Java platform thread is a thin wrapper around an OS thread. Thread creation is expensive (typically ~1MB stack allocation). Each thread has a lifecycle: NEW, RUNNABLE, BLOCKED, WAITING, TIMED_WAITING, TERMINATED.",
+      "sections": [
+        {
+          "heading": "Thread States",
+          "body": "NEW: created but not started. RUNNABLE: executing or ready to execute. BLOCKED: waiting for a monitor lock. WAITING: waiting indefinitely (Object.wait(), Thread.join()). TIMED_WAITING: waiting with a timeout (Thread.sleep(), wait(timeout)). TERMINATED: run() returned or threw an exception.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "Thread t = new Thread(() -> {\n    synchronized (lock) { // → BLOCKED if lock held\n        try {\n            lock.wait(); // → WAITING\n        } catch (InterruptedException e) {\n            Thread.currentThread().interrupt();\n        }\n    }\n});\nt.start(); // NEW → RUNNABLE"
+          }
+        },
+        {
+          "heading": "Thread Interruption",
+          "body": "Interruption is a cooperative mechanism. Thread.interrupt() sets a flag. Blocking methods (sleep, wait, join) throw InterruptedException when interrupted. Always either re-throw InterruptedException or restore the interrupt flag: Thread.currentThread().interrupt()."
+        }
+      ],
+      "keyInsights": [
+        "Thread.getState() returns the JVM state — doesn't map 1:1 to OS scheduler state",
+        "Daemon threads don't prevent JVM shutdown — the JVM exits when all non-daemon threads finish",
+        "ThreadDump analysis: BLOCKED threads all waiting for the same lock = a bottleneck"
+      ]
+    },
+    "estimatedReadMinutes": 8,
+    "tags": ["threads", "concurrency"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "synchronized-locks",
+    "parentId": "concurrency",
+    "label": "Synchronized & Locks",
+    "tagline": "Intrinsic locks, ReentrantLock, and the Java Memory Model",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java provides two locking mechanisms: intrinsic locks (synchronized keyword) and explicit locks (java.util.concurrent.locks). Both enforce mutual exclusion and establish happens-before relationships, but explicit locks offer more features like tryLock, fairness, and multiple conditions.",
+      "sections": [
+        {
+          "heading": "Synchronized",
+          "body": "synchronized(obj) acquires the intrinsic monitor of obj. synchronized methods lock on 'this' (or the Class object for static methods). Every object is a potential lock. The JVM optimizes uncontended locks with biased locking (deprecated in Java 15) and lightweight locking.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "public class Counter {\n    private int count = 0;\n    private final Object lock = new Object();\n\n    public void increment() {\n        synchronized (lock) { // intrinsic lock\n            count++; // read-modify-write is now atomic\n        }\n    }\n}"
+          }
+        },
+        {
+          "heading": "ReentrantLock",
+          "body": "More flexible than synchronized: tryLock() with timeout, lockInterruptibly(), multiple Condition objects, optional fairness (longer queued threads get priority). Always unlock in finally to prevent deadlocks.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "ReentrantLock lock = new ReentrantLock();\nlock.lock();\ntry {\n    // critical section\n} finally {\n    lock.unlock(); // always in finally!\n}"
+          }
+        },
+        {
+          "heading": "ReadWriteLock",
+          "body": "Allows multiple concurrent readers or one exclusive writer. Use ReentrantReadWriteLock for read-heavy workloads. StampedLock (Java 8+) adds optimistic reading for even less overhead when writes are rare."
+        }
+      ],
+      "keyInsights": [
+        "synchronized is simpler and usually sufficient — prefer it unless you need tryLock or multiple conditions",
+        "Lock ordering prevents deadlocks: always acquire locks in the same global order across all threads",
+        "volatile is not a replacement for synchronized — it only provides visibility, not atomicity"
+      ]
+    },
+    "estimatedReadMinutes": 10,
+    "tags": ["locks", "concurrency", "synchronized"],
+    "interviewRelevance": 5
+  },
+  {
+    "id": "executors-threadpool",
+    "parentId": "concurrency",
+    "label": "Executors & Thread Pools",
+    "tagline": "Managing threads with ExecutorService and the Fork/Join framework",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "Creating threads is expensive. ExecutorService manages a pool of reusable threads, queues submitted tasks, and provides lifecycle management. ThreadPoolExecutor is the core implementation; Executors factory methods create common configurations.",
+      "sections": [
+        {
+          "heading": "ThreadPoolExecutor Parameters",
+          "body": "corePoolSize (threads always kept alive), maximumPoolSize (max threads under load), keepAliveTime (how long excess idle threads live), workQueue (task buffer — LinkedBlockingQueue, SynchronousQueue, ArrayBlockingQueue), threadFactory, rejectedExecutionHandler (what to do when queue full and max threads reached).",
+          "codeSnippet": {
+            "language": "java",
+            "code": "ExecutorService pool = new ThreadPoolExecutor(\n    4,                              // core threads\n    16,                             // max threads\n    60L, TimeUnit.SECONDS,          // idle timeout\n    new ArrayBlockingQueue<>(1000), // bounded queue\n    new ThreadFactory() { ... },\n    new CallerRunsPolicy()          // rejection policy\n);"
+          }
+        },
+        {
+          "heading": "Common Pitfalls",
+          "body": "Executors.newFixedThreadPool uses an unbounded queue — tasks can pile up until OOM. Executors.newCachedThreadPool can create unlimited threads — risky under load. Always use bounded queues and explicit rejection policies in production."
+        }
+      ],
+      "keyInsights": [
+        "CPU-bound tasks: pool size ≈ number of CPU cores. I/O-bound tasks: pool size >> cores",
+        "ForkJoinPool (used by parallelStream() and CompletableFuture.supplyAsync()) uses work-stealing",
+        "Virtual threads (Java 21) make 'one thread per request' feasible for I/O-bound workloads"
+      ]
+    },
+    "estimatedReadMinutes": 9,
+    "tags": ["executors", "thread-pool", "concurrency"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "completablefuture",
+    "parentId": "concurrency",
+    "label": "CompletableFuture",
+    "tagline": "Composing asynchronous computations without callback hell",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "CompletableFuture (Java 8+) provides a powerful API for building non-blocking pipelines of asynchronous computations. It's the Java equivalent of Promises, with rich composition operators (thenApply, thenCompose, allOf, anyOf).",
+      "sections": [
+        {
+          "heading": "Building Pipelines",
+          "body": "thenApply (transform result), thenCompose (flat-map, chain another async op), thenCombine (combine two futures), exceptionally (handle errors), whenComplete (run action on complete or error).",
+          "codeSnippet": {
+            "language": "java",
+            "code": "CompletableFuture\n    .supplyAsync(() -> fetchUser(id), executor)      // run async\n    .thenApply(user -> enrichUser(user))             // transform\n    .thenCompose(user -> fetchOrders(user.getId()))  // flat-map\n    .exceptionally(ex -> Collections.emptyList())    // recover\n    .thenAccept(orders -> display(orders));          // consume"
+          }
+        },
+        {
+          "heading": "Thread Pool Usage",
+          "body": "Without an executor argument, async operations use ForkJoinPool.commonPool(). In production, always supply your own executor so I/O operations don't starve compute tasks and you can tune pool size independently."
+        }
+      ],
+      "keyInsights": [
+        "CompletableFuture.get() blocks — avoid it in reactive or async code paths",
+        "allOf waits for all futures; anyOf completes with the first; neither short-circuits by default",
+        "For heavy async workloads in Java 21, virtual threads + simple blocking code is often cleaner than CompletableFuture"
+      ]
+    },
+    "estimatedReadMinutes": 10,
+    "tags": ["async", "concurrency", "completable-future"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "virtual-threads",
+    "parentId": "concurrency",
+    "label": "Virtual Threads",
+    "tagline": "Java 21's lightweight threads that scale to millions",
+    "depth": 2,
+    "visualizationType": "VirtualThreadViz",
+    "content": {
+      "overview": "Virtual threads (Project Loom, GA in Java 21) are lightweight threads managed by the JVM, not the OS. Millions can exist simultaneously, each using only a few KB of memory. They enable writing simple blocking code that scales like async code.",
+      "sections": [
+        {
+          "heading": "Creating Virtual Threads",
+          "body": "Thread.ofVirtual().start(task), Thread.startVirtualThread(task), or use an executor: Executors.newVirtualThreadPerTaskExecutor() — creates a new virtual thread per submitted task, intended to replace thread pools for I/O-bound work.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "// Old style: thread pool\nExecutorService pool = Executors.newFixedThreadPool(200);\n\n// Java 21: virtual thread per task\ntry (var executor = Executors.newVirtualThreadPerTaskExecutor()) {\n    for (int i = 0; i < 100_000; i++) {\n        executor.submit(() -> handleRequest()); // 100k virtual threads!\n    }\n}"
+          }
+        },
+        {
+          "heading": "How They Work",
+          "body": "Virtual threads are multiplexed onto a small pool of platform 'carrier' threads (default: number of CPU cores). When a virtual thread blocks on I/O (socket, file, database), it unmounts from its carrier, which immediately picks up another ready virtual thread. No OS thread is wasted waiting."
+        },
+        {
+          "heading": "Pinning — The Key Caveat",
+          "body": "A virtual thread is 'pinned' to its carrier and cannot unmount when: inside a synchronized block/method, or calling a native method via JNI. Pinning blocks the carrier thread, reducing throughput. Solution: replace synchronized with ReentrantLock in I/O-bound code paths.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "// ❌ Pins carrier thread during I/O\nsynchronized (this) { socket.read(buf); }\n\n// ✓ Virtual thread can unmount\nlock.lock();\ntry { socket.read(buf); } finally { lock.unlock(); }"
+          }
+        }
+      ],
+      "keyInsights": [
+        "Virtual threads don't help CPU-bound code — they shine for blocking I/O",
+        "Thread-local variables still work but can cause memory issues with millions of threads — prefer ScopedValues",
+        "Spring Boot 3.2+ has native virtual thread support — enable with spring.threads.virtual.enabled=true"
+      ]
+    },
+    "estimatedReadMinutes": 12,
+    "tags": ["virtual-threads", "loom", "java-21", "concurrency"],
+    "interviewRelevance": 5
+  },
+  {
+    "id": "collections",
+    "parentId": "java-root",
+    "label": "Collections",
+    "tagline": "Java's data structures and the Streams API",
+    "depth": 1,
+    "visualizationType": null,
+    "content": {
+      "overview": "The Java Collections Framework provides interfaces and implementations for lists, sets, maps, and queues. Choosing the right data structure is critical for performance. The Streams API (Java 8+) adds functional-style bulk operations.",
+      "sections": [],
+      "keyInsights": [
+        "Interface-based programming: declare as List/Map, not ArrayList/HashMap",
+        "Collections.unmodifiableXxx wraps; List.of/Map.of creates truly immutable collections (Java 9+)",
+        "ConcurrentHashMap is not the same as Collections.synchronizedMap — the former uses segment locking"
+      ]
+    },
+    "estimatedReadMinutes": 2,
+    "tags": ["collections", "data-structures"],
+    "interviewRelevance": 5
+  },
+  {
+    "id": "list-internals",
+    "parentId": "collections",
+    "label": "List Internals",
+    "tagline": "ArrayList vs LinkedList — when to use each",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "ArrayList is a resizable array: O(1) random access, O(n) insertion/deletion in the middle, amortized O(1) append. LinkedList is a doubly-linked list: O(n) random access, O(1) insertion/deletion given a reference, but poor cache locality.",
+      "sections": [
+        {
+          "heading": "ArrayList Internals",
+          "body": "Backed by an Object[] array. Initial capacity 10. When full, grows by 50% (1.5x). Use ArrayList(expectedSize) to avoid resizing. trimToSize() releases unused capacity.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "// Efficient: pre-allocate if size is known\nList<String> list = new ArrayList<>(10_000);\n\n// Inefficient: adds trigger repeated copies\nList<String> bad = new ArrayList<>();\nfor (int i = 0; i < 10_000; i++) bad.add(item);"
+          }
+        },
+        {
+          "heading": "When to Use LinkedList",
+          "body": "LinkedList wins only when you need frequent insertions/deletions at the head/tail AND you hold an iterator position (ListIterator). For a queue/deque, prefer ArrayDeque — it's faster than LinkedList for most operations due to cache locality."
+        }
+      ],
+      "keyInsights": [
+        "In modern JVMs, ArrayList almost always beats LinkedList — cache locality matters more than algorithmic complexity",
+        "ArrayDeque is the best Deque/Stack implementation — faster than LinkedList, lower memory",
+        "CopyOnWriteArrayList for read-heavy concurrent access; it copies the array on every write"
+      ]
+    },
+    "estimatedReadMinutes": 7,
+    "tags": ["list", "arraylist", "collections"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "map-internals",
+    "parentId": "collections",
+    "label": "Map Internals",
+    "tagline": "HashMap, TreeMap, LinkedHashMap — internals and trade-offs",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "Map is the most commonly used collection in Java enterprise code. HashMap is O(1) average for get/put; TreeMap is O(log n) but sorted; LinkedHashMap maintains insertion order. ConcurrentHashMap enables safe concurrent access.",
+      "sections": [
+        {
+          "heading": "HashMap Internals",
+          "body": "Array of 16 buckets by default. Hash computed from key.hashCode(), then spread with (h ^ (h >>> 16)). Collision handling: linked list (Java 7), treeified to balanced BST when bucket size > 8 (Java 8+). Load factor 0.75 triggers resize at 12 entries in a 16-bucket map.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "// Pre-size to avoid rehashing\n// capacity = expectedSize / loadFactor\nMap<String, User> users = new HashMap<>(1024 / 0.75 + 1);\n\n// Or use Guava\nMap<String, User> users = Maps.newHashMapWithExpectedSize(1024);"
+          }
+        },
+        {
+          "heading": "hashCode and equals Contract",
+          "body": "Objects that are equal must have the same hashCode. The reverse is not required (hash collision is acceptable). If you override equals, always override hashCode. A broken hashCode causes HashMap to degenerate to O(n) lookup."
+        },
+        {
+          "heading": "TreeMap vs LinkedHashMap",
+          "body": "TreeMap: sorted by natural order or Comparator, O(log n). Use for range queries (subMap, headMap, tailMap). LinkedHashMap: insertion order (or access order with accessOrder=true). Use for LRU caches (override removeEldestEntry)."
+        }
+      ],
+      "keyInsights": [
+        "HashMap is not thread-safe — concurrent modifications cause infinite loops in Java 6 and ConcurrentModificationException in Java 8+",
+        "EnumMap is faster than HashMap for enum keys — uses an array indexed by ordinal",
+        "Map.getOrDefault, computeIfAbsent, merge (Java 8) eliminate most null-checking boilerplate"
+      ]
+    },
+    "estimatedReadMinutes": 10,
+    "tags": ["map", "hashmap", "collections"],
+    "interviewRelevance": 5
+  },
+  {
+    "id": "concurrent-collections",
+    "parentId": "collections",
+    "label": "Concurrent Collections",
+    "tagline": "Thread-safe collections for high-concurrency scenarios",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "java.util.concurrent provides collections designed for concurrent access. Unlike synchronized wrappers, they use fine-grained locking or lock-free algorithms for better throughput under contention.",
+      "sections": [
+        {
+          "heading": "ConcurrentHashMap",
+          "body": "Uses a CAS-based approach with 16 independent segments (Java 7) or per-bucket synchronized (Java 8+). Reads are fully non-blocking. Provides atomic operations: putIfAbsent, computeIfAbsent, merge. Size() is approximate under concurrent modification.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "ConcurrentHashMap<String, AtomicInteger> counts = new ConcurrentHashMap<>();\n// Atomic counter increment — no external synchronization needed\ncounts.computeIfAbsent(key, k -> new AtomicInteger()).incrementAndGet();"
+          }
+        },
+        {
+          "heading": "BlockingQueue Implementations",
+          "body": "LinkedBlockingQueue (unbounded or bounded), ArrayBlockingQueue (bounded, lower overhead), PriorityBlockingQueue (priority ordering), SynchronousQueue (direct handoff — zero capacity). Used in ThreadPoolExecutor and producer-consumer patterns."
+        }
+      ],
+      "keyInsights": [
+        "ConcurrentHashMap.size() may not reflect real-time concurrent puts — use mappingCount() for large maps",
+        "CopyOnWriteArrayList: reads are lock-free; writes copy the array — only for read-heavy with rare writes",
+        "Avoid Collections.synchronizedXxx in high-concurrency code — single lock kills throughput"
+      ]
+    },
+    "estimatedReadMinutes": 8,
+    "tags": ["collections", "concurrency", "concurrent-hashmap"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "streams-api",
+    "parentId": "collections",
+    "label": "Streams API",
+    "tagline": "Declarative bulk operations on collections and sequences",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "The Streams API (Java 8+) provides a declarative way to process sequences of elements: filter, map, reduce, collect. Streams are lazy — intermediate operations don't execute until a terminal operation is called.",
+      "sections": [
+        {
+          "heading": "Lazy Evaluation",
+          "body": "Intermediate operations (filter, map, flatMap, sorted, distinct, limit) build a pipeline. The terminal operation (collect, forEach, reduce, findFirst, anyMatch) triggers execution. Short-circuit operations (findFirst, limit) stop early.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "List<String> result = names.stream()\n    .filter(n -> n.startsWith(\"A\"))  // lazy\n    .map(String::toUpperCase)         // lazy\n    .sorted()                         // lazy (but requires all elements)\n    .limit(10)                        // lazy, short-circuits\n    .collect(Collectors.toList());    // ← triggers execution"
+          }
+        },
+        {
+          "heading": "Parallel Streams",
+          "body": "stream().parallel() or parallelStream() uses ForkJoinPool.commonPool(). Not always faster — there's splitting, merging, and thread coordination overhead. Best for CPU-bound, large data, no side effects. Measure before using."
+        },
+        {
+          "heading": "Collectors",
+          "body": "Collectors.toList(), toSet(), toMap(), groupingBy(), partitioningBy(), joining(), counting(), summarizingInt(). Collectors.toUnmodifiableList() since Java 10. Stream.toList() (Java 16) returns an unmodifiable list directly."
+        }
+      ],
+      "keyInsights": [
+        "Streams should have no side effects in intermediate operations — stateful lambdas cause bugs with parallel streams",
+        "sorted() on a parallel stream is expensive — it must gather all elements before sorting",
+        "Use IntStream/LongStream/DoubleStream to avoid boxing overhead for primitive types"
+      ]
+    },
+    "estimatedReadMinutes": 10,
+    "tags": ["streams", "java-8", "functional"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "version-evolution",
+    "parentId": "java-root",
+    "label": "Java Evolution",
+    "tagline": "Key language features from Java 8 through Java 21",
+    "depth": 1,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java has evolved significantly since Java 8, adding functional programming features, type inference, records, sealed classes, pattern matching, and virtual threads. Each LTS release (8, 11, 17, 21) is a major adoption milestone.",
+      "sections": [],
+      "keyInsights": [
+        "Java 21 is the current LTS — it includes virtual threads, pattern matching for switch, and sequenced collections",
+        "Feature releases (non-LTS) ship every 6 months — production typically uses LTS versions",
+        "java.util.Optional is a container for potentially absent values — not a replacement for null checks everywhere"
+      ]
+    },
+    "estimatedReadMinutes": 2,
+    "tags": ["java", "evolution", "lts"],
+    "interviewRelevance": 3
+  },
+  {
+    "id": "java-8",
+    "parentId": "version-evolution",
+    "label": "Java 8",
+    "tagline": "Lambdas, Streams, Optional, and default methods",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java 8 (2014) was the most significant Java release since Java 5. It added lambda expressions, the Streams API, Optional, CompletableFuture, the new Date/Time API (java.time), and default/static methods on interfaces.",
+      "sections": [
+        {
+          "heading": "Lambda Expressions",
+          "body": "Lambdas implement functional interfaces (interfaces with one abstract method). The compiler infers the functional interface from context. Method references are shorthand lambdas.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "// Lambda\nFunction<String, Integer> len = s -> s.length();\nBiFunction<Integer, Integer, Integer> add = (a, b) -> a + b;\n\n// Method reference forms\nFunction<String, Integer> len2 = String::length;   // instance\nFunction<String, String> upper = String::toUpperCase; // instance (no arg)\nSupplier<List<String>> listFactory = ArrayList::new;  // constructor"
+          }
+        },
+        {
+          "heading": "java.time API",
+          "body": "Replaced the broken Date/Calendar API. LocalDate, LocalTime, LocalDateTime (no timezone). ZonedDateTime (with timezone). Instant (machine timestamp). Period (date-based duration), Duration (time-based). All immutable and thread-safe."
+        }
+      ],
+      "keyInsights": [
+        "Default methods in interfaces enable backward-compatible API evolution — used extensively in Collection",
+        "Optional.orElseGet(() -> expensive()) is lazy; orElse(expensive()) always evaluates the argument",
+        "java.time is heavily inspired by Joda-Time — use it everywhere, never use Date or Calendar in new code"
+      ]
+    },
+    "estimatedReadMinutes": 8,
+    "tags": ["java-8", "lambda", "streams"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "java-11",
+    "parentId": "version-evolution",
+    "label": "Java 11",
+    "tagline": "Local-var, HTTP client, and the first paid-free LTS",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java 11 (2018) was the first LTS after Java 8. Key additions: var in lambda parameters, the new HttpClient API (replacing HttpURLConnection), String methods (isBlank, lines, strip, repeat), Files.readString/writeString, and the removal of deprecated APIs.",
+      "sections": [
+        {
+          "heading": "New HttpClient",
+          "body": "Supports HTTP/1.1 and HTTP/2, WebSocket, synchronous and asynchronous modes, reactive streams for streaming responses. Replaces the terrible HttpURLConnection.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "HttpClient client = HttpClient.newHttpClient();\nHttpRequest request = HttpRequest.newBuilder()\n    .uri(URI.create(\"https://api.example.com/users\"))\n    .header(\"Accept\", \"application/json\")\n    .GET().build();\n\nHttpResponse<String> response =\n    client.send(request, BodyHandlers.ofString());"
+          }
+        }
+      ],
+      "keyInsights": [
+        "var (JEP 323) in lambda parameters allows adding annotations: (@Nonnull var s) -> s.toLowerCase()",
+        "Java 11 removed Java EE modules (javax.xml.bind, javax.activation) — add them as Maven dependencies",
+        "String.strip() is Unicode-aware; String.trim() only handles ASCII whitespace"
+      ]
+    },
+    "estimatedReadMinutes": 5,
+    "tags": ["java-11", "http-client"],
+    "interviewRelevance": 2
+  },
+  {
+    "id": "java-17",
+    "parentId": "version-evolution",
+    "label": "Java 17",
+    "tagline": "Sealed classes, records, text blocks, and pattern matching",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java 17 (2021) LTS added records (immutable data carriers), sealed classes (closed type hierarchies), text blocks, pattern matching for instanceof, and made strong encapsulation of JDK internals mandatory.",
+      "sections": [
+        {
+          "heading": "Records",
+          "body": "Records are transparent immutable data carriers. The compiler generates constructor, getters (component names, not getXxx), equals, hashCode, and toString. You can add compact constructors and instance methods.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "record Point(int x, int y) {\n    // Compact constructor for validation\n    Point {\n        if (x < 0 || y < 0) throw new IllegalArgumentException();\n    }\n    // Custom method\n    double distance() { return Math.sqrt(x*x + y*y); }\n}\n// Usage\nPoint p = new Point(3, 4);\np.x(); // 3 — getter is component name, not getX()"
+          }
+        },
+        {
+          "heading": "Sealed Classes",
+          "body": "A sealed class/interface restricts which other classes may extend/implement it. The subclasses must be listed in the 'permits' clause and must be in the same package (or module). Enables exhaustive pattern matching in switch.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "sealed interface Shape permits Circle, Rectangle, Triangle {}\nrecord Circle(double radius) implements Shape {}\nrecord Rectangle(double w, double h) implements Shape {}\nrecord Triangle(double base, double height) implements Shape {}\n\n// Switch exhaustiveness checked at compile time\ndouble area = switch (shape) {\n    case Circle c    -> Math.PI * c.radius() * c.radius();\n    case Rectangle r -> r.w() * r.h();\n    case Triangle t  -> 0.5 * t.base() * t.height();\n    // no default needed — compiler knows all cases\n};"
+          }
+        }
+      ],
+      "keyInsights": [
+        "Records implement all the right parts of the Value Object pattern without boilerplate",
+        "Sealed classes make illegal states unrepresentable at the type level",
+        "Pattern matching instanceof eliminates casting: if (obj instanceof String s) { s.length(); }"
+      ]
+    },
+    "estimatedReadMinutes": 9,
+    "tags": ["java-17", "records", "sealed-classes"],
+    "interviewRelevance": 4
+  },
+  {
+    "id": "java-21",
+    "parentId": "version-evolution",
+    "label": "Java 21",
+    "tagline": "Virtual threads GA, pattern matching switch, and sequenced collections",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java 21 (2023) is the current LTS and delivers Project Loom (virtual threads), pattern matching for switch (GA), record patterns, sequenced collections, and the String Templates preview. The most feature-rich LTS since Java 8.",
+      "sections": [
+        {
+          "heading": "Pattern Matching for Switch (GA)",
+          "body": "Switch expressions now support type patterns, guarded patterns, and null cases. Combined with sealed classes, this enables exhaustive type-safe dispatch without instanceof chains.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "// Pattern matching switch with guards\nString format = switch (obj) {\n    case Integer i when i > 0 -> \"positive int: \" + i;\n    case Integer i            -> \"non-positive int: \" + i;\n    case String s when s.isEmpty() -> \"empty string\";\n    case String s             -> \"string: \" + s;\n    case null                 -> \"null\";\n    default                   -> \"unknown: \" + obj;\n};"
+          }
+        },
+        {
+          "heading": "Sequenced Collections",
+          "body": "New interfaces: SequencedCollection (first(), last(), addFirst(), addLast(), reversed()), SequencedSet, SequencedMap. Retrofitted onto List, Deque, SortedSet, LinkedHashMap, etc. Eliminates the need for list.get(list.size()-1) to get the last element.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "List<String> list = new ArrayList<>(List.of(\"a\", \"b\", \"c\"));\nlist.getFirst(); // \"a\"\nlist.getLast();  // \"c\"\nlist.reversed(); // [\"c\", \"b\", \"a\"] — view, not copy"
+          }
+        }
+      ],
+      "keyInsights": [
+        "Java 21 virtual threads are fully production-ready — Spring Boot 3.2+ supports them natively",
+        "Record patterns enable destructuring in instanceof and switch: case Point(int x, int y) -> ...",
+        "Generational ZGC (preview in 21, GA in 23) offers dramatically better GC throughput than base ZGC"
+      ]
+    },
+    "estimatedReadMinutes": 10,
+    "tags": ["java-21", "virtual-threads", "pattern-matching"],
+    "interviewRelevance": 5
+  },
+  {
+    "id": "exceptions-io",
+    "parentId": "java-root",
+    "label": "Exceptions & I/O",
+    "tagline": "Error handling hierarchy and modern I/O with NIO",
+    "depth": 1,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java's exception hierarchy separates checked exceptions (must be declared or caught) from unchecked exceptions (RuntimeException and Error). NIO (java.nio) provides non-blocking, buffer-oriented I/O that scales far beyond traditional java.io.",
+      "sections": [],
+      "keyInsights": [
+        "Checked exceptions are controversial — they force API callers to handle errors but lead to swallowed exceptions",
+        "Never catch Error subclasses (OutOfMemoryError, StackOverflowError) — they indicate JVM-level problems",
+        "try-with-resources (Java 7+) automatically calls close() on AutoCloseable — always use it for I/O"
+      ]
+    },
+    "estimatedReadMinutes": 2,
+    "tags": ["exceptions", "io"],
+    "interviewRelevance": 3
+  },
+  {
+    "id": "exception-hierarchy",
+    "parentId": "exceptions-io",
+    "label": "Exception Hierarchy",
+    "tagline": "Throwable, Error, RuntimeException, and checked exceptions",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java's exception hierarchy starts at Throwable. Error (non-recoverable JVM issues), Exception (recoverable, divided into checked and unchecked). RuntimeException (unchecked) and its subclasses don't require declaration.",
+      "sections": [
+        {
+          "heading": "Checked vs Unchecked",
+          "body": "Checked exceptions (IOException, SQLException) must be caught or declared in throws. They model expected failure conditions. Unchecked exceptions (RuntimeException subclasses) model programming errors — null pointer, array out of bounds, illegal arguments.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "// Checked — must handle\ntry {\n    Files.readAllBytes(path); // throws IOException\n} catch (IOException e) {\n    log.error(\"Failed to read\", e); // always log the cause!\n    throw new ServiceException(\"Storage unavailable\", e); // wrap, don't swallow\n}\n\n// Unchecked — document, don't catch at call site\npublic void process(String input) {\n    Objects.requireNonNull(input, \"input must not be null\"); // throws NPE\n}"
+          }
+        },
+        {
+          "heading": "Exception Handling Best Practices",
+          "body": "Don't catch Exception or Throwable at low levels. Catch the most specific type. Always include the cause when wrapping. Never use exceptions for flow control — they're expensive (stack trace capture). Use multi-catch (Exception1 | Exception2 e) to reduce duplication."
+        }
+      ],
+      "keyInsights": [
+        "Exception message should describe what happened, not what to do — that's the caller's concern",
+        "Suppressed exceptions (try-with-resources) are attached to the primary exception — check them when debugging",
+        "Custom exceptions: extend RuntimeException for library errors the caller can't reasonably recover from"
+      ]
+    },
+    "estimatedReadMinutes": 7,
+    "tags": ["exceptions", "error-handling"],
+    "interviewRelevance": 3
+  },
+  {
+    "id": "nio-channels",
+    "parentId": "exceptions-io",
+    "label": "NIO & Channels",
+    "tagline": "Buffer-oriented, non-blocking I/O for high-performance networking",
+    "depth": 2,
+    "visualizationType": null,
+    "content": {
+      "overview": "Java NIO (New I/O, java.nio) introduced Channels, Buffers, and Selectors. Channels are bidirectional, Buffers hold the data, and Selectors multiplex multiple channels on a single thread — the foundation of high-performance servers like Netty.",
+      "sections": [
+        {
+          "heading": "Channels and Buffers",
+          "body": "SocketChannel, FileChannel, DatagramChannel. Buffers: ByteBuffer, CharBuffer, etc. Buffer has position, limit, capacity. flip() prepares a buffer for reading after writing; clear() resets for writing.",
+          "codeSnippet": {
+            "language": "java",
+            "code": "ByteBuffer buf = ByteBuffer.allocate(1024);\nchannel.read(buf);  // write into buffer\nbuf.flip();         // switch to read mode\nwhile (buf.hasRemaining()) {\n    process(buf.get());\n}\nbuf.clear();        // ready to write again"
+          }
+        },
+        {
+          "heading": "Selector — Non-blocking Multiplexing",
+          "body": "A Selector monitors multiple channels for readiness events (ACCEPT, CONNECT, READ, WRITE). One thread can handle thousands of connections. This is how Netty, Tomcat NIO connector, and Spring WebFlux achieve high concurrency without a thread-per-connection model."
+        }
+      ],
+      "keyInsights": [
+        "Files.readAllBytes and Files.writeString (java.nio.file) are the convenient high-level NIO API for files",
+        "ByteBuffer.allocateDirect() allocates off-heap — avoids JVM-to-native copy for I/O but harder to GC",
+        "For most applications, use a library (Netty, Undertow) rather than raw NIO — the API is error-prone"
+      ]
+    },
+    "estimatedReadMinutes": 8,
+    "tags": ["nio", "channels", "networking"],
+    "interviewRelevance": 3
+  }
+]
